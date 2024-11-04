@@ -1,6 +1,10 @@
 # llm-xai
 LLM plugin to access xAI's models
 
+[![PyPI](https://img.shields.io/pypi/v/llm-xai.svg)](https://pypi.org/project/llm-xai/0.2/)
+[![Changelog](https://img.shields.io/github/v/release/ghostofpokemon/llm-xai?include_prereleases&label=changelog)](https://github.com/ghostofpokemon/llm-xai/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/ghostofpokemon/llm-xai/blob/main/LICENSE)
+[LLM](https://llm.datasette.io/) plugin for models hosted by [xAI](https://x.ai/)
 
 ## Installation
 
