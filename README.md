@@ -47,6 +47,7 @@ Type 'exit' or 'quit' to exit
 Type '!multi' to enter multiple lines, then '!end' to finish
 > sup playa
 Hey, what's up?
+>
 ```
 
 xAI offers a completion endpoint.
