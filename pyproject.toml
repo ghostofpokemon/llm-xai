@@ -1,0 +1,21 @@
+[project]
+name = "llm-xai"
+version = "0.2"
+description = "LLM plugin for models hosted by OpenRouter"
+readme = "README.md"
+authors = [{ name = "Nick Mystic" }]
+license = { text = "Apache-2.0" }
+classifiers = ["License :: OSI Approved :: Apache Software License"]
+dependencies = ["llm>=0.8", "httpx"]
+
+[project.urls]
+Homepage = "https://github.com/ghostofpokemon/llm-xai"
+Changelog = "https://github.com/ghostofpokemon/llm-xai/releases"
+Issues = "https://github.com/ghostofpokemon/llm-xai/issues"
+CI = "https://github.com/ghostofpokemon/llm-xai/actions"
+
+[project.entry-points.llm]
+xai = "llm_xai"
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-httpx"]
