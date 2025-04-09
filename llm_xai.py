@@ -15,14 +15,28 @@ def get_xAI_models():
 class XAIChat(Chat):
     needs_key = "xai"
     key_env_var = "XAI_KEY"
+    
     def __str__(self):
         return "xAI: {}".format(self.model_id)
+    
+    def build_kwargs(self, prompt, stream):
+        # Call parent's build_kwargs but without adding stream_options
+        kwargs = super().build_kwargs(prompt, False)  # Pass False to prevent adding stream_options
+        # Keep the stream parameter intact for actual streaming
+        return kwargs
 
 class XAICompletion(Completion):
     needs_key = "xai"
     key_env_var = "XAI_KEY"
+    
     def __str__(self):
         return "xAI: {}".format(self.model_id)
+    
+    def build_kwargs(self, prompt, stream):
+        # Call parent's build_kwargs but without adding stream_options
+        kwargs = super().build_kwargs(prompt, False)  # Pass False to prevent adding stream_options
+        # Keep the stream parameter intact for actual streaming
+        return kwargs
 
 @llm.hookimpl
 def register_models(register):
