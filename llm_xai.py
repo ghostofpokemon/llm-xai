@@ -36,16 +36,11 @@ class XAIChat(Chat):
     def build_kwargs(self, prompt, stream):
         # Call parent's build_kwargs but without adding stream_options
         kwargs = super().build_kwargs(prompt, False)  # Pass False to prevent adding stream_options
-        # Keep the stream parameter intact for actual streaming
         return kwargs
         
     def execute(self, prompt, stream, response, conversation=None, key=None):
         # Check if reasoning_effort is in the options
         has_reasoning = any(isinstance(opt[0], str) and opt[0] == 'reasoning_effort' for opt in prompt.options)
-        
-        # If reasoning is requested and streaming was asked for, we need to use non-streaming
-        if has_reasoning and stream:
-            stream = False  # Force non-streaming mode
             
         if prompt.system and not self.allows_system_prompt:
             raise NotImplementedError("Model does not support system prompts")
@@ -54,7 +49,7 @@ class XAIChat(Chat):
         kwargs = self.build_kwargs(prompt, stream)
         client = self.get_client(key)
         
-        # Make the API call (non-streaming in both cases when reasoning is requested)
+        # Non-streaming mode
         if not stream:
             completion = client.chat.completions.create(
                 model=self.model_name or self.model_id,
@@ -68,22 +63,16 @@ class XAIChat(Chat):
             if completion.usage:
                 self.set_usage(response, completion.usage.model_dump())
             
-            # Check if reasoning_content exists
-            has_reasoning_content = (hasattr(completion.choices[0].message, 'reasoning_content') 
-                                    and completion.choices[0].message.reasoning_content)
-            
-            # If there's reasoning content, yield it first with a clear label
-            if has_reasoning and has_reasoning_content:
+            # If there's reasoning content, yield both reasoning and final content
+            if has_reasoning and hasattr(completion.choices[0].message, 'reasoning_content') and completion.choices[0].message.reasoning_content:
                 reasoning = completion.choices[0].message.reasoning_content
-                # Show reasoning first with label, then show the normal content
                 yield "Reasoning Content:\n" + reasoning + "\n\nFinal Response:\n" + completion.choices[0].message.content
             else:
-                # If no reasoning, just yield the normal content
+                # Otherwise just yield normal content
                 yield completion.choices[0].message.content
-                
             return
         
-        # Standard streaming behavior (no reasoning)
+        # Streaming mode
         completion = client.chat.completions.create(
             model=self.model_name or self.model_id,
             messages=messages,
@@ -93,20 +82,38 @@ class XAIChat(Chat):
         
         # Process streaming chunks
         all_content = []
+        all_reasoning = []
+        reasoning_mode = True  # Start in reasoning mode
+        
         for chunk in completion:
             if chunk.usage:
                 self.set_usage(response, chunk.usage.model_dump())
                 
             try:
-                content = chunk.choices[0].delta.content
-                if content is not None:
+                # Check for reasoning content
+                if hasattr(chunk.choices[0].delta, 'reasoning_content') and chunk.choices[0].delta.reasoning_content is not None:
+                    reasoning = chunk.choices[0].delta.reasoning_content
+                    all_reasoning.append(reasoning)
+                    if has_reasoning and reasoning_mode:
+                        yield reasoning
+                
+                # Check for regular content
+                if hasattr(chunk.choices[0].delta, 'content') and chunk.choices[0].delta.content is not None:
+                    content = chunk.choices[0].delta.content
                     all_content.append(content)
+                    # If switching from reasoning to content, add separator
+                    if reasoning_mode and has_reasoning and all_reasoning:
+                        reasoning_mode = False
+                        yield "\n\nFinal Response:\n"
                     yield content
             except (IndexError, AttributeError):
                 pass
         
-        # Store content in response
-        response.response_json = {"content": "".join(all_content)}
+        # Store both reasoning and content in response
+        response.response_json = {
+            "content": "".join(all_content),
+            "reasoning_content": "".join(all_reasoning) if all_reasoning else None
+        }
 
 class XAICompletion(Completion):
     needs_key = "xai"
@@ -124,16 +131,11 @@ class XAICompletion(Completion):
     def build_kwargs(self, prompt, stream):
         # Call parent's build_kwargs but without adding stream_options
         kwargs = super().build_kwargs(prompt, False)  # Pass False to prevent adding stream_options
-        # Keep the stream parameter intact for actual streaming
         return kwargs
         
     def execute(self, prompt, stream, response, conversation=None, key=None):
         # Check if reasoning_effort is in the options
         has_reasoning = any(isinstance(opt[0], str) and opt[0] == 'reasoning_effort' for opt in prompt.options)
-        
-        # If reasoning is requested and streaming was asked for, we need to use non-streaming
-        if has_reasoning and stream:
-            stream = False  # Force non-streaming mode
         
         if prompt.system:
             raise NotImplementedError("System prompts are not supported for OpenAI completion models")
@@ -148,6 +150,7 @@ class XAICompletion(Completion):
         kwargs = self.build_kwargs(prompt, stream)
         client = self.get_client(key)
         
+        # Non-streaming mode
         if not stream:
             completion = client.completions.create(
                 model=self.model_name or self.model_id,
@@ -161,7 +164,7 @@ class XAICompletion(Completion):
             if completion.usage:
                 self.set_usage(response, completion.usage.model_dump())
             
-            # Check if there's reasoning content
+            # Check for reasoning content
             has_reasoning_content = False
             reasoning_content = None
             
@@ -172,7 +175,7 @@ class XAICompletion(Completion):
                         reasoning_content = choice['message']['reasoning_content']
                         break
             
-            # If we have reasoning content, only show that
+            # If we have reasoning content, show both
             if has_reasoning and has_reasoning_content and reasoning_content:
                 yield "Reasoning Content:\n" + reasoning_content + "\n\nFinal Response:\n" + completion.choices[0].text
             else:
@@ -181,7 +184,7 @@ class XAICompletion(Completion):
             
             return
         
-        # Standard streaming behavior for non-reasoning requests
+        # Streaming mode
         completion = client.completions.create(
             model=self.model_name or self.model_id,
             prompt="\n".join(messages),
@@ -189,18 +192,37 @@ class XAICompletion(Completion):
             **kwargs,
         )
         
-        chunks = []
+        # Process streaming chunks
+        all_content = []
+        all_reasoning = []
+        reasoning_mode = True
+        
         for chunk in completion:
-            chunks.append(chunk)
             try:
-                content = chunk.choices[0].text
-            except IndexError:
-                content = None
-            if content is not None:
-                yield content
+                # Check for reasoning content
+                if hasattr(chunk.choices[0], 'reasoning_content') and chunk.choices[0].reasoning_content is not None:
+                    reasoning = chunk.choices[0].reasoning_content
+                    all_reasoning.append(reasoning)
+                    if has_reasoning and reasoning_mode:
+                        yield reasoning
+                
+                # Check for regular content
+                if hasattr(chunk.choices[0], 'text') and chunk.choices[0].text is not None:
+                    content = chunk.choices[0].text
+                    all_content.append(content)
+                    # If switching from reasoning to content, add separator
+                    if reasoning_mode and has_reasoning and all_reasoning:
+                        reasoning_mode = False
+                        yield "\n\nFinal Response:\n"
+                    yield content
+            except (IndexError, AttributeError):
+                pass
                 
         # Store response data
-        response.response_json = {"text": "".join([c.choices[0].text for c in chunks if hasattr(c, 'choices') and c.choices])}
+        response.response_json = {
+            "text": "".join(all_content),
+            "reasoning_content": "".join(all_reasoning) if all_reasoning else None
+        }
 
 @llm.hookimpl
 def register_models(register):
