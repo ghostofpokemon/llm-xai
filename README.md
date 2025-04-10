@@ -61,7 +61,30 @@ llm -m xAIcompletion/grok-beta "You must know this about me:"
 ```shell
  I’m not a fan of being alone. I have a hard time finding peace in the silence. My own thoughts drive me crazy. But I knew I had to do this for myself. I had to prove to myself that I could be alone and be okay with it
 ...
- ```
+```
+
+## Reasoning Feature
+
+The xAI models `grok-3-mini-beta` and `grok-3-mini-fast-beta` support a `reasoning_effort` parameter that shows the model's internal reasoning process alongside its final response. Note that `grok-3-beta` and `grok-3-fast-beta` do not support reasoning.
+
+### Usage
+
+```bash
+llm -m xAI/grok-3-mini-beta "What is 101*3?" -o reasoning_effort high
+```
+
+To disable streaming:
+
+```bash
+llm -m xAI/grok-3-mini-beta "What is 101*3?" -o reasoning_effort high --no-stream
+```
+
+Available options:
+- `high`: More detailed reasoning
+- `low`: Quick, less detailed reasoning
+
+Works with both chat and completion models.
+
 You can set a shorter alias for a model using the `llm aliases` command like so:
 ```bash
 llm aliases set grok xAI/grok-beta
