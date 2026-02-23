@@ -38,7 +38,7 @@ class XAIChat(Chat):
         kwargs = super().build_kwargs(prompt, False)  # Pass False to prevent adding stream_options
         return kwargs
         
-    def execute(self, prompt, stream, response, conversation=None, **kwargs):
+    def execute(self, prompt, stream, response, conversation=None, key=None, **kwargs):
         # Check if reasoning_effort is in the options
         has_reasoning = any(isinstance(opt[0], str) and opt[0] == 'reasoning_effort' for opt in prompt.options)
             
@@ -133,7 +133,7 @@ class XAICompletion(Completion):
         kwargs = super().build_kwargs(prompt, False)  # Pass False to prevent adding stream_options
         return kwargs
         
-    def execute(self, prompt, stream, response, conversation=None, **kwargs):
+    def execute(self, prompt, stream, response, conversation=None, key=None, **kwargs):
         # Check if reasoning_effort is in the options
         has_reasoning = any(isinstance(opt[0], str) and opt[0] == 'reasoning_effort' for opt in prompt.options)
         
