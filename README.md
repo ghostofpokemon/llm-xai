@@ -89,7 +89,7 @@ You can set a shorter alias for a model using the `llm aliases` command like so:
 ```bash
 llm aliases set grok xAI/grok-beta
 ```
-Now you can prompt Claude using:
+Now you can prompt Grok using:
 ```bash
 cat llm_xai.py | llm -m grok-beta -s 'write some pytest tests for this'
 ```
